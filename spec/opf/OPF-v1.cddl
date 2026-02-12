@@ -1,0 +1,57 @@
+; OmniUil Proof Format v1 — CDDL
+; Fonte única de verdade para validação estrutural
+
+opf = {
+  version: 1,
+  metadata: metadata,
+  ir_hash: bstr,
+  smt: smt_block,
+  policy: policy_block,
+  hardware: hardware_block / null,
+  signature: signature_block
+}
+
+metadata = {
+  created_at: tstr,
+  generator: tstr,
+  target: tstr
+}
+
+smt_block = {
+  solver: "z3",
+  result: "sat",
+  constraints: [ + bstr ]
+}
+
+policy_block = {
+  execution: execution_policy,
+  filesystem: filesystem_policy / null,
+  syscalls: syscall_policy / null
+}
+
+execution_policy = {
+  mode: "allow",
+  scope: "process" / "container" / "system"
+}
+
+filesystem_policy = {
+  read: [ * tstr ],
+  write: [ * tstr ],
+  exec: [ * tstr ]
+}
+
+syscall_policy = {
+  allow: [ * uint ],
+  deny: [ * uint ]
+}
+
+hardware_block = {
+  tpm: bool,
+  device_id: bstr
+}
+
+signature_block = {
+  alg: "ed25519",
+  pubkey: bstr,
+  sig: bstr
+}

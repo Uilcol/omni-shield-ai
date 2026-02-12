@@ -1,0 +1,31 @@
+name: OmniUil AI Enterprise CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Install Python dependencies
+        run: pip install -r engine/requirements.txt
+      - name: Run Enterprise Full Stack Pipeline
+        run: python engine/engine_pipeline_fullstack_enterprise.py
+      - name: Archive Audit Reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: omniuil-reports
+          path: reports/

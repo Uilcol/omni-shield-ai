@@ -1,0 +1,12 @@
+C:\dev\omniuil-ai\target\debug\deps\signature-c5fa1a577b6e43f6.d: C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\lib.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\hazmat.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\encoding.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\error.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\keypair.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\signer.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\verifier.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\../README.md
+
+C:\dev\omniuil-ai\target\debug\deps\libsignature-c5fa1a577b6e43f6.rmeta: C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\lib.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\hazmat.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\encoding.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\error.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\keypair.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\signer.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\verifier.rs C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\../README.md
+
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\lib.rs:
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\hazmat.rs:
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\encoding.rs:
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\error.rs:
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\keypair.rs:
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\signer.rs:
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\verifier.rs:
+C:\Users\liber\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\signature-2.2.0\src\../README.md:
