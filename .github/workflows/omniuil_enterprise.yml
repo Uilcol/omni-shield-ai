@@ -1,4 +1,4 @@
-name: OmniUil AI Enterprise CI/CD
+name: OmniShield AI Enterprise CI/CD
 
 on:
   push:
@@ -29,13 +29,13 @@ jobs:
       # -----------------------------
       # Build Rust Workspace
       # -----------------------------
-      - name: Build OmniUil
+      - name: Build OmniShield AI
         run: cargo build --workspace --release
 
       # -----------------------------
       # Run OmniUil Scan + SARIF
       # -----------------------------
-      - name: Run OmniUil Security Scan
+      - name: Run OmniShield AI Security Scan
         run: |
           cargo run -p cli --release -- scan . \
             --sarif omniuil.sarif \
@@ -72,7 +72,7 @@ jobs:
       - name: Archive Audit Reports
         uses: actions/upload-artifact@v4
         with:
-          name: omniuil-reports
+          name: omnishield-reports
           path: |
             reports/
             omniuil.sarif
