@@ -1,0 +1,35 @@
+/target/
+**/target/
+node_modules/
+.env
+.env.*
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Rust
+target/
+**/target/
+
+# Python
+__pycache__/
+*.pyc
+
+# Reports generated
+*.sarif
+*.html
+*.json
+
+# Temporary
+*.backup
+*.tmp
+
+# Local archives / nested repositories
+archive/
+Uilcol-ai/
+UILCOL/
+release_build/
