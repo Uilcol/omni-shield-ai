@@ -1,0 +1,11 @@
+RULE PY-EVAL-001
+WHEN source(input)
+AND sink(eval)
+AND NOT sanitized
+THEN HIGH "User input reaches eval"
+
+RULE PY-CMD-001
+WHEN source(input)
+AND sink(exec)
+AND NOT sanitized
+THEN HIGH "Command injection risk"
