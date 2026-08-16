@@ -1,3 +1,7 @@
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 use crate::error::VerifierError;
 
 pub fn validate_cbor(bytes: &[u8]) -> Result<(), VerifierError> {

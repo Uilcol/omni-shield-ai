@@ -1,3 +1,7 @@
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 // src/signature.rs
 
 use crate::{error::VerifierError, parser::ParsedOpf};

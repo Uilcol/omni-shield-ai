@@ -1,3 +1,7 @@
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 use ed25519_dalek::{Signature, VerifyingKey};
 use crate::error::VerifierError;
 

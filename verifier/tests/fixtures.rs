@@ -1,3 +1,7 @@
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 // tests/fixtures.rs
 
 use std::fs::File;

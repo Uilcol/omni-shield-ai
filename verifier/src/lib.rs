@@ -1,3 +1,7 @@
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 // ─── MÓDULOS INTERNOS ─────────────────────────────
 pub mod parser;
 pub mod canonical;

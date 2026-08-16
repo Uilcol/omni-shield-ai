@@ -1,3 +1,7 @@
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
+#![allow(dead_code, unused_imports)]
 // tests/test_invalid.rs
 
 mod fixtures;
@@ -30,4 +34,3 @@ fn opf_with_invalid_signature_is_rejected() {
     let res = verify(&opf);
     assert!(matches!(res, Err(verifier::error::VerifierError::BadSignature)), "OPF with invalid signature accepted");
 }
-
