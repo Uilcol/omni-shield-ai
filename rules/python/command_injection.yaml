@@ -1,0 +1,7 @@
+id: PY-CMD-001
+description: Command injection via exec
+severity: high
+pattern: exec(
+source: request.args
+sink: exec
+language: python

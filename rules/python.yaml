@@ -1,0 +1,14 @@
+rules:
+  - id: PY-EVAL-EXT-001
+    title: Dangerous eval usage
+    description: eval() may lead to code injection
+    severity: High
+    pattern: "eval("
+    languages: ["python"]
+
+  - id: PY-SECRET-EXT-001
+    title: Hardcoded password
+    description: Possible hardcoded credential
+    severity: High
+    pattern: "password"
+    languages: ["python"]

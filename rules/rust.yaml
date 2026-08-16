@@ -1,0 +1,7 @@
+rules:
+  - id: RS-UNSAFE-EXT-001
+    title: Unsafe block usage
+    description: Unsafe Rust block detected
+    severity: Medium
+    pattern: "unsafe"
+    languages: ["rust"]

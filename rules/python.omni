@@ -1,0 +1,10 @@
+rule eval_user_input {
+    source: input
+    sink: eval
+    severity: CRITICAL
+}
+
+rule hardcoded_secret {
+    pattern: password
+    severity: HIGH
+}

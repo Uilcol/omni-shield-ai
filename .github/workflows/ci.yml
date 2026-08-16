@@ -1,0 +1,13 @@
+name: OmniUil CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: sudo apt update && sudo apt install -y cargo
+      - name: Build
+        run: cargo build

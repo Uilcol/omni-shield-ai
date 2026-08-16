@@ -1,0 +1,7 @@
+rules:
+  - id: JS-EVAL-EXT-001
+    title: Dangerous eval usage
+    description: eval() allows arbitrary code execution
+    severity: High
+    pattern: "eval("
+    languages: ["javascript"]

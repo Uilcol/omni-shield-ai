@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omniuil-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: omniuil
+  template:
+    metadata:
+      labels:
+        app: omniuil
+    spec:
+      containers:
+      - name: api
+        image: omniuil:latest
+        ports:
+        - containerPort: 3000
