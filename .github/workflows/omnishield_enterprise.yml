@@ -10,69 +10,69 @@ permissions:
   security-events: write
 
 jobs:
-  build-test-deploy:
+  build-test-security:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # -----------------------------
-      # Setup Rust
-      # -----------------------------
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo
         uses: Swatinem/rust-cache@v2
 
-      # -----------------------------
-      # Build Rust Workspace
-      # -----------------------------
-      - name: Build OmniShield AI
+      - name: Build OmniShield Workspace
         run: cargo build --workspace --release
 
-      # -----------------------------
-      # Run OmniShield AI Scan + SARIF
-      # -----------------------------
-      - name: Run OmniShield AI Security Scan
+      - name: Test OmniShield Workspace
+        run: cargo test --workspace
+
+      - name: Verify CLI
+        run: cargo run -p omnishield --release -- --version
+
+      - name: Run Security Scan
+        shell: bash
         run: |
-          cargo run -p cli --release -- scan . \
+          set +e
+          cargo run -p omnishield --release -- scan sample_project \
             --sarif omnishield.sarif \
             --fail-on high
+          status=$?
+          set -e
 
-      # -----------------------------
-      # Upload SARIF to GitHub Security
-      # -----------------------------
-      - name: Upload SARIF Report
+          if [ "$status" -ne 1 ]; then
+            echo "Expected vulnerable fixture to exit with code 1, got $status"
+            exit 1
+          fi
+
+          echo "Expected vulnerability detection confirmed."
+
+      - name: Validate Clean Scan
+        shell: bash
+        run: |
+          mkdir -p /tmp/omnishield-clean
+          printf 'fn main() { println!("hello"); }\n' > /tmp/omnishield-clean/main.rs
+
+          cargo run -p omnishield --release -- scan /tmp/omnishield-clean \
+            --sarif omnishield-clean.sarif \
+            --fail-on high
+
+      - name: Validate SARIF
+        run: |
+          python3 -m json.tool omnishield.sarif > /dev/null
+          python3 -m json.tool omnishield-clean.sarif > /dev/null
+
+      - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: omnishield.sarif
 
-      # -----------------------------
-      # Setup Python
-      # -----------------------------
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Python dependencies
-        run: pip install -r engine/requirements.txt
-
-      # -----------------------------
-      # Run Enterprise Pipeline
-      # -----------------------------
-      - name: Run Enterprise Full Stack Pipeline
-        run: python engine/engine_pipeline_fullstack_enterprise.py
-
-      # -----------------------------
-      # Archive Reports
-      # -----------------------------
-      - name: Archive Audit Reports
+      - name: Upload OmniShield Reports
         uses: actions/upload-artifact@v4
         with:
           name: omnishield-reports
           path: |
-            reports/
             omnishield.sarif
+            omnishield-clean.sarif

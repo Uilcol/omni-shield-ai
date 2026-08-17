@@ -31,6 +31,12 @@ enum Commands {
 
         #[arg(long)]
         pr_review: bool,
+
+        #[arg(long)]
+        fail_on: Option<String>,
+
+        #[arg(long)]
+        sarif: Option<PathBuf>,
     },
 
     CreatePr,
@@ -44,11 +50,13 @@ fn main() {
         return;
     }
 
-    match cli.command {
+    let exit_code = match cli.command {
         Some(Commands::Scan {
             path,
             push_check,
             pr_review,
+            fail_on,
+            sarif,
         }) => {
             println!();
             println!("====================================");
@@ -56,7 +64,7 @@ fn main() {
             println!("====================================");
             println!();
 
-            scan::run(path, None, None);
+            let exit_code = scan::run(path, None, fail_on, sarif);
 
             if push_check {
                 println!("GitHub push check enabled.");
@@ -65,6 +73,8 @@ fn main() {
             if pr_review {
                 println!("GitHub PR review enabled.");
             }
+
+            exit_code
         }
 
         Some(Commands::CreatePr) => {
@@ -85,13 +95,19 @@ fn main() {
             );
 
             println!("PR result: {:?}", pr);
+            0
         }
 
         None => {
             println!("Usage:");
             println!("  omnishield scan <path>");
+            println!("  omnishield scan <path> --fail-on high");
+            println!("  omnishield scan <path> --sarif omnishield.sarif");
             println!("  omnishield scan <path> --pr-review");
             println!("  omnishield scan <path> --push-check");
+            0
         }
-    }
+    };
+
+    std::process::exit(exit_code);
 }

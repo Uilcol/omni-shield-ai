@@ -1,9 +1,5 @@
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
-use crate::finding::Finding;
+use crate::findings::finding::Finding;
 
-pub fn generate(findings: &Vec<Finding>) -> String {
+pub fn generate(findings: &[Finding]) -> String {
     serde_json::to_string_pretty(findings).unwrap_or_default()
 }

@@ -17,3 +17,5 @@ pub mod benchmark;
 pub mod fpsl;
 
 pub mod profiling;
+
+pub mod report;

@@ -1,80 +1,97 @@
-#![allow(dead_code, unused_imports)]
-#![allow(dead_code, unused_imports)]
-#![allow(dead_code, unused_imports)]
-#![allow(dead_code, unused_imports)]
-use crate::rules::finding::Finding;
+use crate::findings::finding::Finding;
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct SarifReport {
+    #[serde(rename = "$schema")]
+    schema: String,
     version: String,
     runs: Vec<SarifRun>,
 }
 
-#[derive(Serialize)]
-pub struct SarifRun {
+#[derive(Debug, Serialize)]
+struct SarifRun {
     tool: SarifTool,
     results: Vec<SarifResult>,
 }
 
-#[derive(Serialize)]
-pub struct SarifTool {
+#[derive(Debug, Serialize)]
+struct SarifTool {
     driver: SarifDriver,
 }
 
-#[derive(Serialize)]
-pub struct SarifDriver {
+#[derive(Debug, Serialize)]
+struct SarifDriver {
     name: String,
+    information_uri: String,
 }
 
-#[derive(Serialize)]
-pub struct SarifResult {
-    ruleId: String,
+#[derive(Debug, Serialize)]
+struct SarifResult {
+    #[serde(rename = "ruleId")]
+    rule_id: String,
+    level: String,
     message: SarifMessage,
     locations: Vec<SarifLocation>,
 }
 
-#[derive(Serialize)]
-pub struct SarifMessage {
+#[derive(Debug, Serialize)]
+struct SarifMessage {
     text: String,
 }
 
-#[derive(Serialize)]
-pub struct SarifLocation {
-    physicalLocation: SarifPhysicalLocation,
+#[derive(Debug, Serialize)]
+struct SarifLocation {
+    #[serde(rename = "physicalLocation")]
+    physical_location: SarifPhysicalLocation,
 }
 
-#[derive(Serialize)]
-pub struct SarifPhysicalLocation {
-    artifactLocation: SarifArtifactLocation,
+#[derive(Debug, Serialize)]
+struct SarifPhysicalLocation {
+    #[serde(rename = "artifactLocation")]
+    artifact_location: SarifArtifactLocation,
     region: SarifRegion,
 }
 
-#[derive(Serialize)]
-pub struct SarifArtifactLocation {
+#[derive(Debug, Serialize)]
+struct SarifArtifactLocation {
     uri: String,
 }
 
-#[derive(Serialize)]
-pub struct SarifRegion {
-    startLine: usize,
+#[derive(Debug, Serialize)]
+struct SarifRegion {
+    #[serde(rename = "startLine")]
+    start_line: usize,
+}
+
+fn sarif_level(severity: &str) -> &'static str {
+    match severity.to_ascii_lowercase().as_str() {
+        "critical" | "high" => "error",
+        "medium" => "warning",
+        "low" | "info" => "note",
+        _ => "warning",
+    }
 }
 
 pub fn generate(findings: &[Finding]) -> String {
-    let results: Vec<SarifResult> = findings
+    let results = findings
         .iter()
-        .map(|f| SarifResult {
-            ruleId: f.rule_id.clone(),
+        .map(|finding| SarifResult {
+            rule_id: finding.id.clone(),
+            level: sarif_level(&finding.severity).to_string(),
             message: SarifMessage {
-                text: f.message.clone(),
+                text: format!(
+                    "{}. Evidence: {}. Recommendation: {}",
+                    finding.title, finding.evidence, finding.recommendation
+                ),
             },
             locations: vec![SarifLocation {
-                physicalLocation: SarifPhysicalLocation {
-                    artifactLocation: SarifArtifactLocation {
-                        uri: f.file.clone(),
+                physical_location: SarifPhysicalLocation {
+                    artifact_location: SarifArtifactLocation {
+                        uri: finding.file.clone(),
                     },
                     region: SarifRegion {
-                        startLine: f.line,
+                        start_line: finding.line,
                     },
                 },
             }],
@@ -82,16 +99,19 @@ pub fn generate(findings: &[Finding]) -> String {
         .collect();
 
     let report = SarifReport {
+        schema: "https://json.schemastore.org/sarif-2.1.0.json".to_string(),
         version: "2.1.0".to_string(),
         runs: vec![SarifRun {
             tool: SarifTool {
                 driver: SarifDriver {
-                    name: "OmniUil AI".to_string(),
+                    name: "OmniShield AI".to_string(),
+                    information_uri: "https://github.com/Uilcol/omni-shield-ai".to_string(),
                 },
             },
             results,
         }],
     };
 
-    serde_json::to_string_pretty(&report).unwrap_or_else(|_| "{}".to_string())
+    serde_json::to_string_pretty(&report)
+        .unwrap_or_else(|_| "{\"version\":\"2.1.0\",\"runs\":[]}".to_string())
 }
