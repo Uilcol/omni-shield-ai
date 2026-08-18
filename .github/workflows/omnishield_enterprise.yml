@@ -32,13 +32,29 @@ jobs:
       - name: Verify CLI
         run: cargo run -p omnishield --release -- --version
 
+      - name: Create Vulnerable CI Fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p /tmp/omnishield-ci-fixture
+
+          cat > /tmp/omnishield-ci-fixture/vulnerable.py <<'PY'
+          user_input = input("value: ")
+          eval(user_input)
+          os.system(user_input)
+          PY
+
       - name: Run Security Scan
         shell: bash
         run: |
           set +e
-          cargo run -p omnishield --release -- scan sample_project \
+
+          cargo run -p omnishield --release -- \
+            scan /tmp/omnishield-ci-fixture \
             --sarif omnishield.sarif \
             --fail-on high
+
           status=$?
           set -e
 
@@ -52,10 +68,15 @@ jobs:
       - name: Validate Clean Scan
         shell: bash
         run: |
-          mkdir -p /tmp/omnishield-clean
-          printf 'fn main() { println!("hello"); }\n' > /tmp/omnishield-clean/main.rs
+          set -euo pipefail
 
-          cargo run -p omnishield --release -- scan /tmp/omnishield-clean \
+          mkdir -p /tmp/omnishield-clean
+
+          printf 'fn main() { println!("hello"); }\n' \
+            > /tmp/omnishield-clean/main.rs
+
+          cargo run -p omnishield --release -- \
+            scan /tmp/omnishield-clean \
             --sarif omnishield-clean.sarif \
             --fail-on high
 
