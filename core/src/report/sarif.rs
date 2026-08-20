@@ -23,6 +23,7 @@ struct SarifTool {
 #[derive(Debug, Serialize)]
 struct SarifDriver {
     name: String,
+    #[serde(rename = "informationUri")]
     information_uri: String,
 }
 
