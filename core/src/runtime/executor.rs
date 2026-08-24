@@ -1,5 +1,6 @@
 use crate::deep::querydsl;
 use crate::deep::smt_guard::SmtGuard;
+use crate::findings::dedup::DedupEngine;
 use crate::findings::finding::Finding;
 use std::fs;
 use std::path::Path;
@@ -13,8 +14,7 @@ impl RuntimeExecutor {
         Self::scan_recursive(path, &mut findings);
 
         let validated = SmtGuard::filter_false_positives(findings);
-
-        validated
+        DedupEngine::deduplicate(validated)
     }
 
     fn scan_recursive(path: &str, findings: &mut Vec<Finding>) {
