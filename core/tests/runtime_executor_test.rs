@@ -67,3 +67,28 @@ fn clean_project_has_no_findings() {
 
     fs::remove_dir_all(dir).expect("failed to remove temp directory");
 }
+
+#[test]
+fn ignores_os_system_inside_comments_and_strings() {
+    let dir = temp_dir("runtime-cmd-ast");
+    let file = dir.join("safe.py");
+
+    fs::write(
+        &file,
+        concat!(
+            "# os.system(user_input)\n",
+            "text = \"os.system(user_input)\"\n",
+            "value = \"safe\"\n",
+        ),
+    )
+    .expect("failed to write fixture");
+
+    let findings = RuntimeExecutor::execute(dir.to_str().unwrap());
+
+    assert!(
+        findings.iter().all(|f| f.id != "PY-CMD-001"),
+        "unexpected PY-CMD-001 finding"
+    );
+
+    fs::remove_dir_all(dir).expect("failed to remove temporary directory");
+}

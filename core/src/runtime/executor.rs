@@ -46,15 +46,17 @@ impl RuntimeExecutor {
                 }
             }
 
-            if let Some(line) = Self::find_line(&content, "os.system(") {
-                findings.push(Self::build_finding(
-                    "PY-CMD-001",
-                    "Possible Command Injection",
-                    "Critical",
-                    &file_path,
-                    line,
-                    "os.system(user_input)",
-                ));
+            if file_path.ends_with(".py") {
+                for line in PythonParser::find_calls(&content, "os.system") {
+                    findings.push(Self::build_finding(
+                        "PY-CMD-001",
+                        "Possible Command Injection",
+                        "Critical",
+                        &file_path,
+                        line,
+                        "os.system(...)",
+                    ));
+                }
             }
 
             if let Some(line) = Self::find_sql_line(&content) {

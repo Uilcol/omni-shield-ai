@@ -40,3 +40,32 @@ fn ignores_text_containing_eval() {
 
     assert!(lines.is_empty());
 }
+
+
+#[test]
+fn finds_real_os_system_call_lines() {
+    let code = concat!(
+        "# os.system(user_input)\n",
+        "message = \"os.system(user_input)\"\n",
+        "\n",
+        "user_input = input()\n",
+        "os.system(user_input)\n",
+    );
+
+    let lines = PythonParser::find_calls(code, "os.system");
+
+    assert_eq!(lines, vec![5]);
+}
+
+#[test]
+fn ignores_text_containing_os_system() {
+    let code = concat!(
+        "text = \"os.system(user_input)\"\n",
+        "# os.system(user_input)\n",
+        "value = \"safe\"\n",
+    );
+
+    let lines = PythonParser::find_calls(code, "os.system");
+
+    assert!(lines.is_empty());
+}
