@@ -2,6 +2,7 @@ use crate::deep::querydsl;
 use crate::deep::smt_guard::SmtGuard;
 use crate::findings::dedup::DedupEngine;
 use crate::findings::finding::Finding;
+use crate::languages::python::PythonParser;
 use std::fs;
 use std::path::Path;
 
@@ -32,15 +33,17 @@ impl RuntimeExecutor {
 
             let content = fs::read_to_string(&file_path).unwrap_or_default();
 
-            if let Some(line) = Self::find_line(&content, "eval(") {
-                findings.push(Self::build_finding(
-                    "PY-EVAL-001",
-                    "Use of eval() detected",
-                    "High",
-                    &file_path,
-                    line,
-                    "eval(user_input)",
-                ));
+            if file_path.ends_with(".py") {
+                for line in PythonParser::find_calls(&content, "eval") {
+                    findings.push(Self::build_finding(
+                        "PY-EVAL-001",
+                        "Use of eval() detected",
+                        "High",
+                        &file_path,
+                        line,
+                        "eval(...)",
+                    ));
+                }
             }
 
             if let Some(line) = Self::find_line(&content, "os.system(") {

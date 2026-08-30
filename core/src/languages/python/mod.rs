@@ -1,9 +1,3 @@
-#[allow(dead_code, unused_imports)]
+pub mod parser;
 
-pub struct Stub;
-
-impl Stub {
-    pub fn run(&self) {
-        // implementação futura
-    }
-}
+pub use parser::PythonParser;
