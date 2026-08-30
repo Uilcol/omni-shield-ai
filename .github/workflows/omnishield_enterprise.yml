@@ -65,6 +65,36 @@ jobs:
 
           echo "Expected vulnerability detection confirmed."
 
+      - name: Validate Expected Findings
+        shell: bash
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          report = json.loads(Path("omnishield.sarif").read_text())
+          results = report["runs"][0]["results"]
+
+          counts = Counter(result["ruleId"] for result in results)
+
+          expected = {
+              "PY-EVAL-001": 1,
+              "PY-CMD-001": 1,
+              "TAINT-001": 2,
+          }
+
+          assert len(results) == 4, (
+              f"Expected 4 findings, got {len(results)}"
+          )
+
+          assert dict(counts) == expected, (
+              f"Unexpected finding distribution: {dict(counts)}"
+          )
+
+          print("Expected finding distribution confirmed:", dict(counts))
+          PYEOF
+
       - name: Validate Clean Scan
         shell: bash
         run: |
