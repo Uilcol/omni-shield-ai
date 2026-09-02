@@ -59,15 +59,17 @@ impl RuntimeExecutor {
                 }
             }
 
-            if let Some(line) = Self::find_sql_line(&content) {
-                findings.push(Self::build_finding(
-                    "PY-SQLI-001",
-                    "Possible SQL Injection",
-                    "Critical",
-                    &file_path,
-                    line,
-                    "query concatenation with user input",
-                ));
+            if file_path.ends_with(".py") {
+                for line in PythonParser::find_sql_injection_lines(&content) {
+                    findings.push(Self::build_finding(
+                        "PY-SQLI-001",
+                        "Possible SQL Injection",
+                        "Critical",
+                        &file_path,
+                        line,
+                        "query construction with user-controlled input",
+                    ));
+                }
             }
 
             if let Some(line) = Self::find_line(&content, "password =")
@@ -110,13 +112,6 @@ impl RuntimeExecutor {
         content
             .lines()
             .position(|line| line.contains(needle))
-            .map(|index| index + 1)
-    }
-
-    fn find_sql_line(content: &str) -> Option<usize> {
-        content
-            .lines()
-            .position(|line| line.contains("SELECT ") && line.contains("+ user_input"))
             .map(|index| index + 1)
     }
 

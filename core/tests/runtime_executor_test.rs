@@ -92,3 +92,35 @@ fn ignores_os_system_inside_comments_and_strings() {
 
     fs::remove_dir_all(dir).expect("failed to remove temporary directory");
 }
+
+#[test]
+fn detects_python_sql_injection_with_real_lines() {
+    let dir = temp_dir("runtime-sqli-ast");
+    let file = dir.join("sqli.py");
+
+    fs::write(
+        &file,
+        concat!(
+            "query = \"SELECT * FROM users WHERE id=\" + user_input\n",
+            "query2 = f\"SELECT * FROM users WHERE id={user_input}\"\n",
+            "safe = \"SELECT * FROM users WHERE id=1\"\n",
+            "# SELECT * FROM users WHERE id= + user_input\n",
+        ),
+    )
+    .expect("failed to write fixture");
+
+    let findings = RuntimeExecutor::execute(dir.to_str().unwrap());
+
+    let mut lines: Vec<usize> = findings
+        .iter()
+        .filter(|f| f.id == "PY-SQLI-001")
+        .map(|f| f.line)
+        .collect();
+
+    lines.sort_unstable();
+    lines.dedup();
+
+    assert_eq!(lines, vec![1, 2]);
+
+    fs::remove_dir_all(dir).expect("failed to remove temporary directory");
+}

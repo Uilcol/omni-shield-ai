@@ -69,3 +69,41 @@ fn ignores_text_containing_os_system() {
 
     assert!(lines.is_empty());
 }
+
+
+#[test]
+fn finds_sql_injection_from_string_concatenation() {
+    let code = concat!(
+        "query = \"SELECT * FROM users WHERE id=\" + user_input\n",
+        "safe = \"SELECT * FROM users\"\n",
+    );
+
+    let lines = PythonParser::find_sql_injection_lines(code);
+
+    assert_eq!(lines, vec![1]);
+}
+
+#[test]
+fn finds_sql_injection_from_f_string() {
+    let code = concat!(
+        "user_input = input()\n",
+        "query = f\"SELECT * FROM users WHERE id={user_input}\"\n",
+    );
+
+    let lines = PythonParser::find_sql_injection_lines(code);
+
+    assert_eq!(lines, vec![2]);
+}
+
+#[test]
+fn ignores_static_sql_and_sql_text() {
+    let code = concat!(
+        "query = \"SELECT * FROM users\"\n",
+        "text = \"SELECT ... + user_input\"\n",
+        "# SELECT * FROM users + user_input\n",
+    );
+
+    let lines = PythonParser::find_sql_injection_lines(code);
+
+    assert!(lines.is_empty());
+}
