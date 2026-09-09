@@ -18,6 +18,7 @@ impl FixSuggestion {
 
             rule_id: rule.to_string(),
             recommendation: recommendation.to_string(),
+            security_path: None,
 
         }
 

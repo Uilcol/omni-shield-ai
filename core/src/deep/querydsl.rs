@@ -63,6 +63,7 @@ pub fn scan(path: &str) -> Vec<Finding> {
                 "Sanitize input '{}' before reaching '{}'",
                 flow.source, flow.sink
             ),
+            security_path: None,
         });
     }
 
@@ -87,6 +88,7 @@ pub fn scan(path: &str) -> Vec<Finding> {
                     "Validate or sanitize return values from '{}'",
                     func.function_name
                 ),
+                security_path: None,
             });
         }
     }

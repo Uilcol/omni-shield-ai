@@ -1,3 +1,4 @@
+use crate::security_graph::SecurityPath;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -12,6 +13,8 @@ pub struct Finding {
     pub line: usize,
     pub evidence: String,
     pub recommendation: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub security_path: Option<SecurityPath>,
 }
 
 impl Finding {
@@ -38,6 +41,7 @@ impl Finding {
             line,
             evidence: evidence.to_string(),
             recommendation: recommendation.to_string(),
+            security_path: None,
         }
     }
 }

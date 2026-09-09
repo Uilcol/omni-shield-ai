@@ -13,6 +13,7 @@ fn finding(id: &str, file: &str, line: usize, evidence: &str) -> Finding {
         line,
         evidence: evidence.to_string(),
         recommendation: "test".to_string(),
+        security_path: None,
     }
 }
 

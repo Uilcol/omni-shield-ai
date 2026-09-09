@@ -134,6 +134,7 @@ impl RuntimeExecutor {
             line,
             evidence: evidence.to_string(),
             recommendation: "Review and remediate securely.".to_string(),
+            security_path: None,
         }
     }
 }

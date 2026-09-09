@@ -54,8 +54,7 @@ fn clean_project_has_no_findings() {
     let dir = temp_dir("runtime-clean");
     let file = dir.join("main.rs");
 
-    fs::write(&file, "fn main() { println!(\"hello\"); }\n")
-        .expect("failed to write fixture");
+    fs::write(&file, "fn main() { println!(\"hello\"); }\n").expect("failed to write fixture");
 
     let findings = RuntimeExecutor::execute(dir.to_str().unwrap());
 

@@ -9,6 +9,8 @@ pub mod output;
 pub mod policy;
 pub mod query;
 pub mod runtime;
+pub mod security_graph;
+pub mod security_graph_builder;
 pub mod semantic;
 pub mod smt;
 
