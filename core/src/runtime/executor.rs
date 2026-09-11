@@ -3,6 +3,8 @@ use crate::deep::smt_guard::SmtGuard;
 use crate::findings::dedup::DedupEngine;
 use crate::findings::finding::Finding;
 use crate::languages::python::PythonParser;
+use crate::security_graph::SecurityPath;
+use crate::security_graph_builder::SecurityGraphBuilder;
 use std::fs;
 use std::path::Path;
 
@@ -28,10 +30,14 @@ impl RuntimeExecutor {
         if dir.is_file() {
             let file_path = path.to_string();
 
-            let deep_findings = querydsl::scan(&file_path);
-            findings.extend(deep_findings);
-
+            let mut deep_findings = querydsl::scan(&file_path);
             let content = fs::read_to_string(&file_path).unwrap_or_default();
+
+            if file_path.ends_with(".py") {
+                Self::attach_security_paths(&file_path, &content, &mut deep_findings);
+            }
+
+            findings.extend(deep_findings);
 
             if file_path.ends_with(".py") {
                 for line in PythonParser::find_calls(&content, "eval") {
@@ -103,6 +109,69 @@ impl RuntimeExecutor {
             for entry in entries.flatten() {
                 if let Some(p) = entry.path().to_str() {
                     Self::scan_recursive(p, findings);
+                }
+            }
+        }
+    }
+
+    fn attach_security_paths(file: &str, content: &str, findings: &mut [Finding]) {
+        if findings.is_empty() {
+            return;
+        }
+
+        let graph = SecurityGraphBuilder::from_python(content, file);
+
+        let sources: Vec<String> = graph
+            .nodes()
+            .filter(|node| node.kind == crate::security_graph::SecurityNodeKind::Source)
+            .map(|node| node.id.clone())
+            .collect();
+
+        let sinks: Vec<String> = graph
+            .nodes()
+            .filter(|node| node.kind == crate::security_graph::SecurityNodeKind::Sink)
+            .map(|node| node.id.clone())
+            .collect();
+
+        if sources.is_empty() || sinks.is_empty() {
+            return;
+        }
+
+        let mut paths: Vec<SecurityPath> = Vec::new();
+
+        for source in &sources {
+            for sink in &sinks {
+                paths.extend(graph.security_paths(source, sink, 16));
+            }
+        }
+
+        for finding in findings.iter_mut() {
+            if finding.file != file {
+                continue;
+            }
+
+            if !matches!(
+                finding.id.as_str(),
+                "TAINT-001" | "PY-EVAL-001" | "PY-CMD-001"
+            ) {
+                continue;
+            }
+
+            let best_path = paths
+                .iter()
+                .filter(|path| {
+                    path.sink()
+                        .map(|step| step.line == finding.line)
+                        .unwrap_or(false)
+                        || path.steps.iter().any(|step| step.line == finding.line)
+                })
+                .min_by_key(|path| path.len());
+
+            if let Some(path) = best_path {
+                finding.security_path = Some(path.clone());
+
+                if finding.evidence.trim().is_empty() {
+                    finding.evidence = path.labels().join(" -> ");
                 }
             }
         }
