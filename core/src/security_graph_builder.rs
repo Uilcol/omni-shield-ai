@@ -63,6 +63,9 @@ impl SecurityGraphBuilder {
         Self::walk(tree.root_node(), &mut context, None);
         drop(context);
 
+        // Resolve cross-function data flow over the structural graph.
+        Self::connect_interprocedural_edges(&mut graph, code, file);
+
         // Build deterministic source nodes and variable flow for assignments.
         let mut tainted_variables = HashSet::new();
 
@@ -304,6 +307,22 @@ impl SecurityGraphBuilder {
                 }
             }
 
+            "return_statement" => {
+                let line = node.start_position().row + 1;
+                let text = node.utf8_text(context.code.as_bytes()).unwrap_or("");
+                let return_id = format!("{}:return:{}", context.file, line);
+
+                if context.graph.node(&return_id).is_none() {
+                    context.graph.add_node(SecurityNode {
+                        id: return_id,
+                        kind: SecurityNodeKind::Return,
+                        label: text.trim().to_string(),
+                        file: context.file.to_string(),
+                        line,
+                    });
+                }
+            }
+
             "assignment" => {
                 if let (Some(left), Some(right)) = (
                     node.child_by_field_name("left"),
@@ -419,6 +438,273 @@ impl SecurityGraphBuilder {
                 kind: SecurityEdgeKind::Defines,
             });
         }
+    }
+
+    fn connect_interprocedural_edges(graph: &mut SecurityGraph, code: &str, file: &str) {
+        let functions: Vec<SecurityNode> = graph
+            .nodes()
+            .filter(|node| node.file == file && node.kind == SecurityNodeKind::Function)
+            .cloned()
+            .collect();
+
+        let calls: Vec<SecurityNode> = graph
+            .nodes()
+            .filter(|node| node.file == file && node.kind == SecurityNodeKind::Call)
+            .cloned()
+            .collect();
+
+        let returns: Vec<SecurityNode> = graph
+            .nodes()
+            .filter(|node| node.file == file && node.kind == SecurityNodeKind::Return)
+            .cloned()
+            .collect();
+
+        let variables: Vec<SecurityNode> = graph
+            .nodes()
+            .filter(|node| node.file == file && node.kind == SecurityNodeKind::Variable)
+            .cloned()
+            .collect();
+
+        // Call -> callee function and argument -> parameter.
+        for call in &calls {
+            let call_name = Self::call_name(&call.label);
+            if call_name.is_empty() {
+                continue;
+            }
+
+            let Some(function) = functions
+                .iter()
+                .find(|function| function.label == call_name)
+            else {
+                continue;
+            };
+
+            graph.add_edge(SecurityEdge {
+                from: call.id.clone(),
+                to: function.id.clone(),
+                kind: SecurityEdgeKind::Calls,
+            });
+
+            let parameters: Vec<SecurityNode> = variables
+                .iter()
+                .filter(|node| node.id.contains(":parameter:") && node.line == function.line)
+                .cloned()
+                .collect();
+
+            for (index, argument) in Self::call_arguments(&call.label).iter().enumerate() {
+                let Some(parameter) = parameters.get(index) else {
+                    continue;
+                };
+
+                graph.add_edge(SecurityEdge {
+                    from: call.id.clone(),
+                    to: parameter.id.clone(),
+                    kind: SecurityEdgeKind::FlowsTo,
+                });
+
+                if let Some(argument_variable) =
+                    Self::latest_variable_before(&variables, argument, call.line)
+                {
+                    graph.add_edge(SecurityEdge {
+                        from: argument_variable.id.clone(),
+                        to: call.id.clone(),
+                        kind: SecurityEdgeKind::FlowsTo,
+                    });
+                }
+            }
+        }
+
+        // Propagate taint through local assignments, including parameter -> local variable.
+        for variable in &variables {
+            if variable.id.contains(":parameter:") {
+                continue;
+            }
+
+            let Some(function) = Self::enclosing_function(&functions, code, variable.line) else {
+                continue;
+            };
+
+            let Some(line_text) = Self::line_at(code, variable.line) else {
+                continue;
+            };
+
+            let Some(rhs) = line_text.split_once('=').map(|(_, rhs)| rhs.trim()) else {
+                continue;
+            };
+
+            for candidate in &variables {
+                if candidate.id == variable.id
+                    || !Self::variable_in_function(candidate, function, code)
+                {
+                    continue;
+                }
+
+                if rhs.contains(&candidate.label) {
+                    graph.add_edge(SecurityEdge {
+                        from: candidate.id.clone(),
+                        to: variable.id.clone(),
+                        kind: SecurityEdgeKind::FlowsTo,
+                    });
+                }
+            }
+        }
+
+        // Connect values to return statements inside the same function.
+        for return_node in &returns {
+            let Some(function) = Self::enclosing_function(&functions, code, return_node.line)
+            else {
+                continue;
+            };
+
+            let Some(line_text) = Self::line_at(code, return_node.line) else {
+                continue;
+            };
+
+            let expression = line_text.trim().strip_prefix("return").unwrap_or("").trim();
+
+            for variable in &variables {
+                if !Self::variable_in_function(variable, function, code) {
+                    continue;
+                }
+
+                if expression.contains(&variable.label) {
+                    graph.add_edge(SecurityEdge {
+                        from: variable.id.clone(),
+                        to: return_node.id.clone(),
+                        kind: SecurityEdgeKind::FlowsTo,
+                    });
+                }
+            }
+        }
+
+        // Connect function returns to caller assignment variables.
+        for call in &calls {
+            let call_name = Self::call_name(&call.label);
+            if call_name.is_empty() {
+                continue;
+            }
+
+            let Some(function) = functions
+                .iter()
+                .find(|function| function.label == call_name)
+            else {
+                continue;
+            };
+
+            let Some(caller_variable) = variables.iter().find(|variable| {
+                !variable.id.contains(":parameter:")
+                    && variable.line == call.line
+                    && Self::line_at(code, variable.line)
+                        .map(|line| {
+                            line.split_once('=')
+                                .map(|(_, rhs)| rhs.contains(&format!("{}(", call_name)))
+                                .unwrap_or(false)
+                        })
+                        .unwrap_or(false)
+            }) else {
+                continue;
+            };
+
+            for return_node in &returns {
+                let Some(return_function) =
+                    Self::enclosing_function(&functions, code, return_node.line)
+                else {
+                    continue;
+                };
+
+                if return_function.id == function.id {
+                    graph.add_edge(SecurityEdge {
+                        from: return_node.id.clone(),
+                        to: caller_variable.id.clone(),
+                        kind: SecurityEdgeKind::Returns,
+                    });
+                }
+            }
+        }
+    }
+
+    fn call_name(text: &str) -> String {
+        text.split('(')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .rsplit('.')
+            .next()
+            .unwrap_or("")
+            .trim()
+            .to_string()
+    }
+
+    fn call_arguments(text: &str) -> Vec<String> {
+        let Some((_, rest)) = text.split_once('(') else {
+            return Vec::new();
+        };
+
+        rest.split_once(')')
+            .map(|(args, _)| args)
+            .unwrap_or(rest)
+            .split(',')
+            .map(str::trim)
+            .filter(|arg| !arg.is_empty())
+            .map(|arg| {
+                arg.trim_matches(|c: char| c == '(' || c == ')' || c == ' ')
+                    .to_string()
+            })
+            .collect()
+    }
+
+    fn latest_variable_before<'a>(
+        variables: &'a [SecurityNode],
+        argument: &str,
+        line: usize,
+    ) -> Option<&'a SecurityNode> {
+        let argument = argument
+            .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+            .next()
+            .unwrap_or("");
+
+        if !Self::is_identifier(argument) {
+            return None;
+        }
+
+        variables
+            .iter()
+            .filter(|node| node.line <= line && node.label == argument)
+            .max_by_key(|node| node.line)
+    }
+
+    fn enclosing_function<'a>(
+        functions: &'a [SecurityNode],
+        code: &str,
+        line: usize,
+    ) -> Option<&'a SecurityNode> {
+        functions
+            .iter()
+            .filter(|function| {
+                function.line < line
+                    && Self::line_indent(code, line) > Self::line_indent(code, function.line)
+            })
+            .max_by_key(|function| function.line)
+    }
+
+    fn variable_in_function(variable: &SecurityNode, function: &SecurityNode, code: &str) -> bool {
+        if variable.id.contains(":parameter:") {
+            return variable.line == function.line;
+        }
+
+        Self::enclosing_function(std::slice::from_ref(function), code, variable.line)
+            .map(|owner| owner.id == function.id)
+            .unwrap_or(false)
+    }
+
+    fn line_at(code: &str, line: usize) -> Option<&str> {
+        code.lines().nth(line.saturating_sub(1))
+    }
+
+    fn line_indent(code: &str, line: usize) -> usize {
+        Self::line_at(code, line)
+            .map(|text| text.chars().take_while(|c| *c == ' ' || *c == '\t').count())
+            .unwrap_or(0)
     }
 
     fn is_source_call(text: &str) -> bool {

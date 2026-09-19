@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-redis = { version = "0.24", features = ["tokio-comp"] }
+redis = { version = "0.24.1", features = ["tokio-comp"] }

@@ -15,6 +15,6 @@ reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 jsonwebtoken = "9"
 rsa = "0.9"
 
-redis = { version = "0.24", features = ["tokio-comp"] }
+redis = { version = "0.24.1", features = ["tokio-comp"] }
 
 dotenvy = "0.15"

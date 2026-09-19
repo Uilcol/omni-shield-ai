@@ -84,3 +84,107 @@ fn finds_source_to_sink_path_in_python_code() {
         "expected Source -> Variable -> Call -> Sink path, got: {paths:?}"
     );
 }
+
+#[test]
+fn connects_tainted_argument_to_function_parameter() {
+    let code = concat!(
+        "def run(value):\n",
+        "    eval(value)\n",
+        "\n",
+        "user_input = input()\n",
+        "run(user_input)\n",
+    );
+
+    let graph = SecurityGraphBuilder::from_python(code, "interproc.py");
+
+    assert!(graph.edges().iter().any(|edge| {
+        edge.from == "interproc.py:call:5"
+            && edge.to.contains(":parameter:value:")
+            && edge.kind == omniuil_core::security_graph::SecurityEdgeKind::FlowsTo
+    }));
+
+    assert!(graph.edges().iter().any(|edge| {
+        edge.from == "interproc.py:variable:user_input:4"
+            && edge.to == "interproc.py:call:5"
+            && edge.kind == omniuil_core::security_graph::SecurityEdgeKind::FlowsTo
+    }));
+}
+
+#[test]
+fn connects_parameter_through_local_assignment_to_return() {
+    let code = concat!(
+        "def run(value):\n",
+        "    query = value\n",
+        "    return query\n",
+    );
+
+    let graph = SecurityGraphBuilder::from_python(code, "return.py");
+
+    assert!(graph.edges().iter().any(|edge| {
+        edge.from.contains(":parameter:value:")
+            && edge.to == "return.py:variable:query:2"
+            && edge.kind == omniuil_core::security_graph::SecurityEdgeKind::FlowsTo
+    }));
+
+    assert!(graph.edges().iter().any(|edge| {
+        edge.from == "return.py:variable:query:2"
+            && edge.to == "return.py:return:3"
+            && edge.kind == omniuil_core::security_graph::SecurityEdgeKind::FlowsTo
+    }));
+}
+
+#[test]
+fn connects_function_return_to_caller_variable() {
+    let code = concat!(
+        "def run(value):\n",
+        "    return value\n",
+        "\n",
+        "user_input = input()\n",
+        "result = run(user_input)\n",
+        "eval(result)\n",
+    );
+
+    let graph = SecurityGraphBuilder::from_python(code, "caller.py");
+
+    assert!(graph.edges().iter().any(|edge| {
+        edge.from == "caller.py:return:2"
+            && edge.to == "caller.py:variable:result:5"
+            && edge.kind == omniuil_core::security_graph::SecurityEdgeKind::Returns
+    }));
+
+    assert!(graph.edges().iter().any(|edge| {
+        edge.from == "caller.py:variable:result:5"
+            && edge.to == "caller.py:call:6"
+            && edge.kind == omniuil_core::security_graph::SecurityEdgeKind::FlowsTo
+    }));
+}
+
+#[test]
+fn builds_end_to_end_cross_function_security_path() {
+    let code = concat!(
+        "def run(value):\n",
+        "    query = value\n",
+        "    return query\n",
+        "\n",
+        "user_input = input()\n",
+        "result = run(user_input)\n",
+        "eval(result)\n",
+    );
+
+    let paths = SecurityGraphBuilder::find_python_source_sink_paths(code, "cross.py", 16);
+
+    assert!(
+        paths.iter().any(|path| {
+            path.iter().any(|id| id == "cross.py:source:user_input:5")
+                && path.iter().any(|id| id == "cross.py:variable:user_input:5")
+                && path.iter().any(|id| id == "cross.py:call:6")
+                && path.iter().any(|id| id.contains(":parameter:value:"))
+                && path.iter().any(|id| id == "cross.py:variable:query:2")
+                && path.iter().any(|id| id == "cross.py:return:3")
+                && path.iter().any(|id| id == "cross.py:variable:result:6")
+                && path.iter().any(|id| id == "cross.py:call:7")
+                && path.iter().any(|id| id == "cross.py:sink:7")
+        }),
+        "expected cross-function source-to-sink path, got: {paths:?}"
+    );
+}
