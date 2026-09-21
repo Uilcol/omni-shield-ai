@@ -6,12 +6,7 @@ pub struct Sanitizer;
 
 impl Sanitizer {
     pub fn is_sanitizer(node: &str) -> bool {
-        let sanitizers = [
-            "sanitize",
-            "escape",
-            "clean",
-            "validate",
-        ];
+        let sanitizers = ["sanitize", "escape", "clean", "validate"];
 
         sanitizers.iter().any(|s| node.contains(s))
     }
@@ -20,7 +15,7 @@ impl Sanitizer {
 pub struct SanitizerDetector;
 
 impl SanitizerDetector {
-    pub fn is_sanitizer(_name: &str) -> bool {
-        false
+    pub fn is_sanitizer(name: &str) -> bool {
+        crate::security::database::SecurityDatabase::new().is_sanitizer(name)
     }
 }

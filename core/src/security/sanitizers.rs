@@ -1,7 +1,3 @@
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
 use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
@@ -11,17 +7,45 @@ pub struct Sanitizers {
 
 impl Sanitizers {
     pub fn new() -> Self {
-        let mut functions = HashSet::new();
-
-        functions.insert("escape".into());
-        functions.insert("sanitize".into());
-        functions.insert("html_escape".into());
-        functions.insert("sql_escape".into());
+        let functions = [
+            // Generic
+            "sanitize",
+            "escape",
+            "clean",
+            "validate",
+            "normalize",
+            // HTML / XSS
+            "html.escape",
+            "html_escape",
+            "markupsafe.escape",
+            "bleach.clean",
+            // SQL
+            "sql_escape",
+            "quote",
+            "sqlalchemy.text",
+            // Shell / command
+            "shlex.quote",
+            // URL / encoding
+            "urllib.parse.quote",
+            "urlencode",
+        ]
+        .into_iter()
+        .map(str::to_ascii_lowercase)
+        .collect();
 
         Self { functions }
     }
 
     pub fn is_sanitizer(&self, name: &str) -> bool {
-        self.functions.contains(name)
+        let normalized = name.trim().trim_end_matches(';').to_ascii_lowercase();
+
+        if self.functions.contains(&normalized) {
+            return true;
+        }
+
+        self.functions.iter().any(|sanitizer| {
+            normalized.starts_with(&format!("{sanitizer}("))
+                || normalized.contains(&format!(".{sanitizer}("))
+        })
     }
 }

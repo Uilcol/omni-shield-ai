@@ -1,3 +1,4 @@
+use crate::security::database::SecurityDatabase;
 use crate::security_graph::{
     SecurityEdge, SecurityEdgeKind, SecurityGraph, SecurityNode, SecurityNodeKind,
 };
@@ -284,6 +285,28 @@ impl SecurityGraphBuilder {
                         from: source_id,
                         to: call_id.clone(),
                         kind: SecurityEdgeKind::FlowsTo,
+                    });
+                }
+
+                if SecurityDatabase::new().is_sanitizer(&normalized) {
+                    let sanitizer_id = format!(
+                        "{}:sanitizer:{}",
+                        context.file,
+                        node.start_position().row + 1
+                    );
+
+                    context.graph.add_node(SecurityNode {
+                        id: sanitizer_id.clone(),
+                        kind: SecurityNodeKind::Sanitizer,
+                        label: call_text.to_string(),
+                        file: context.file.to_string(),
+                        line: node.start_position().row + 1,
+                    });
+
+                    context.graph.add_edge(SecurityEdge {
+                        from: call_id.clone(),
+                        to: sanitizer_id,
+                        kind: SecurityEdgeKind::Sanitizes,
                     });
                 }
 
@@ -708,28 +731,22 @@ impl SecurityGraphBuilder {
     }
 
     fn is_source_call(text: &str) -> bool {
-        text.starts_with("input(")
-            || text.contains("request.get(")
-            || text.contains("request.post(")
-            || text.contains("sys.argv")
+        SecurityDatabase::new().is_source(text)
     }
 
     fn contains_source(text: &str) -> bool {
-        text.contains("input(")
-            || text.contains("request.get")
-            || text.contains("request.post")
-            || text.contains("sys.argv")
-            || text.contains("user_input")
-            || text.contains("params")
+        let database = SecurityDatabase::new();
+
+        if database.is_source(text) {
+            return true;
+        }
+
+        text.split(|c: char| !c.is_ascii_alphanumeric() && c != '_' && c != '.')
+            .any(|token| database.is_source(token))
     }
 
     fn is_sink_call(text: &str) -> bool {
-        text.starts_with("eval(")
-            || text.starts_with("exec(")
-            || text.starts_with("os.system(")
-            || text.starts_with("subprocess.call(")
-            || text.starts_with("cursor.execute(")
-            || text.contains(".execute(")
+        SecurityDatabase::new().is_sink(text)
     }
 
     fn is_identifier(text: &str) -> bool {

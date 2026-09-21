@@ -23,3 +23,5 @@ pub mod profiling;
 pub mod report;
 
 pub mod languages;
+
+pub mod security;

@@ -6,13 +6,7 @@ pub struct Source;
 
 impl Source {
     pub fn is_source(node: &str) -> bool {
-        let sources = [
-            "input",
-            "read",
-            "request",
-            "params",
-            "argv",
-        ];
+        let sources = ["input", "read", "request", "params", "argv"];
 
         sources.iter().any(|s| node.contains(s))
     }
@@ -21,7 +15,7 @@ impl Source {
 pub struct SourceDetector;
 
 impl SourceDetector {
-    pub fn is_source(_name: &str) -> bool {
-        false
+    pub fn is_source(name: &str) -> bool {
+        crate::security::database::SecurityDatabase::new().is_source(name)
     }
 }

@@ -1,7 +1,3 @@
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
-#[allow(dead_code, unused_imports)]
 use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
@@ -11,27 +7,54 @@ pub struct Sinks {
 
 impl Sinks {
     pub fn new() -> Self {
-        let mut functions = HashSet::new();
-
-        // SQL
-        functions.insert("execute".into());
-        functions.insert("query".into());
-
-        // Command execution
-        functions.insert("system".into());
-        functions.insert("exec".into());
-        functions.insert("spawn".into());
-
-        // File
-        functions.insert("open".into());
-
-        // Web
-        functions.insert("render".into());
+        let functions = [
+            // Code execution
+            "eval",
+            "exec",
+            // Command execution
+            "system",
+            "os.system",
+            "subprocess.call",
+            "subprocess.run",
+            "subprocess.popen",
+            "spawn",
+            "child_process.exec",
+            "child_process.spawn",
+            // SQL
+            "execute",
+            "query",
+            "cursor.execute",
+            "connection.execute",
+            "session.execute",
+            "engine.execute",
+            // File / filesystem
+            "open",
+            "path.open",
+            // Web/template output
+            "render",
+            "render_template",
+            "template.render",
+        ]
+        .into_iter()
+        .map(str::to_ascii_lowercase)
+        .collect();
 
         Self { functions }
     }
 
     pub fn is_sink(&self, name: &str) -> bool {
-        self.functions.contains(name)
+        let normalized = name.trim().trim_end_matches(';').to_ascii_lowercase();
+
+        if self.functions.contains(&normalized) {
+            return true;
+        }
+
+        self.functions.iter().any(|sink| {
+            normalized == *sink
+                || normalized.starts_with(&format!("{sink}("))
+                || normalized.ends_with(&format!(".{sink}"))
+                || normalized.contains(&format!(".{sink}("))
+                || normalized.ends_with(&format!("::{sink}"))
+        })
     }
 }
