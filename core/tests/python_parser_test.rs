@@ -213,3 +213,21 @@ fn ignores_clean_function_argument_return() {
 
     assert!(lines.is_empty());
 }
+
+#[test]
+fn finds_user_controlled_file_open_path() {
+    let code = "open(request.args[\"file\"]).read()\\n";
+
+    let lines = PythonParser::find_user_controlled_file_open_lines(code);
+
+    assert_eq!(lines, vec![1]);
+}
+
+#[test]
+fn ignores_basename_sanitized_file_open_path() {
+    let code = "open(os.path.basename(filename)).read()\\n";
+
+    let lines = PythonParser::find_user_controlled_file_open_lines(code);
+
+    assert!(lines.is_empty());
+}

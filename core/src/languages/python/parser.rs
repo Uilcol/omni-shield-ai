@@ -21,6 +21,25 @@ impl PythonParser {
         lines
     }
 
+    pub fn find_user_controlled_file_open_lines(code: &str) -> Vec<usize> {
+        let mut parser = Parser::new();
+
+        parser
+            .set_language(tree_sitter_python::language())
+            .expect("failed to initialize Python tree-sitter language");
+
+        let tree = parser
+            .parse(code, None)
+            .expect("failed to parse Python source");
+
+        let mut lines = Vec::new();
+        Self::walk_file_open_calls(tree.root_node(), code, &mut lines);
+
+        lines.sort_unstable();
+        lines.dedup();
+        lines
+    }
+
     pub fn find_sql_injection_lines(code: &str) -> Vec<usize> {
         let mut parser = Parser::new();
 
@@ -176,6 +195,66 @@ impl PythonParser {
         lines
     }
 
+    fn walk_file_open_calls(node: Node, code: &str, lines: &mut Vec<usize>) {
+        if node.kind() == "call" {
+            let function_name = node
+                .child_by_field_name("function")
+                .and_then(|function| function.utf8_text(code.as_bytes()).ok())
+                .unwrap_or("");
+
+            if function_name == "open" || function_name.ends_with(".open") {
+                if let Some(arguments) = node.child_by_field_name("arguments") {
+                    let argument_text = arguments.utf8_text(code.as_bytes()).unwrap_or("");
+                    let expression =
+                        Self::remove_string_literals(argument_text).to_ascii_lowercase();
+
+                    let has_user_controlled_source = [
+                        "request.args",
+                        "request.get",
+                        "request.post",
+                        "request.form",
+                        "request.json",
+                        "request.values",
+                        "request.files",
+                        "request.query_params",
+                        "request.path_params",
+                        "request.get_json",
+                        "request.headers",
+                        "request.cookies",
+                        "request.get(",
+                        "request.post(",
+                        "req.query",
+                        "req.params",
+                        "req.body",
+                        "input(",
+                        "sys.argv",
+                        "argv",
+                        "user_input",
+                    ]
+                    .iter()
+                    .any(|source| expression.contains(source));
+
+                    let has_basename_sanitizer = [
+                        "os.path.basename(",
+                        "posixpath.basename(",
+                        "ntpath.basename(",
+                    ]
+                    .iter()
+                    .any(|sanitizer| expression.contains(sanitizer));
+
+                    if has_user_controlled_source && !has_basename_sanitizer {
+                        lines.push(node.start_position().row + 1);
+                    }
+                }
+            }
+        }
+
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            Self::walk_file_open_calls(child, code, lines);
+        }
+    }
+
     fn remove_string_literals(text: &str) -> String {
         let mut result = String::with_capacity(text.len());
         let mut chars = text.chars().peekable();
@@ -320,12 +399,17 @@ impl PythonParser {
                 let right_text = right.utf8_text(code.as_bytes()).unwrap_or("");
                 let full_text = node.utf8_text(code.as_bytes()).unwrap_or("");
 
-                if full_text.contains('+')
+                let has_confirmed_taint = (Self::is_sql_literal(left_text)
+                    && Self::is_tainted_expression(right_text))
+                    || (Self::is_sql_literal(right_text) && Self::is_tainted_expression(left_text));
+
+                let dynamic_concat_at_sql_sink = Self::is_inside_sql_sink(node, code)
                     && ((Self::is_sql_literal(left_text)
-                        && Self::is_tainted_expression(right_text))
+                        && Self::is_dynamic_sql_value(right, code))
                         || (Self::is_sql_literal(right_text)
-                            && Self::is_tainted_expression(left_text)))
-                {
+                            && Self::is_dynamic_sql_value(left, code)));
+
+                if full_text.contains('+') && (has_confirmed_taint || dynamic_concat_at_sql_sink) {
                     lines.push(node.start_position().row + 1);
                 }
             }
@@ -346,6 +430,40 @@ impl PythonParser {
         for child in node.children(&mut cursor) {
             Self::walk_sql_nodes(child, code, lines);
         }
+    }
+
+    fn is_inside_sql_sink(node: Node, code: &str) -> bool {
+        let mut ancestor = node.parent();
+
+        while let Some(current) = ancestor {
+            if current.kind() == "call" {
+                if let Some(function) = current.child_by_field_name("function") {
+                    if let Ok(name) = function.utf8_text(code.as_bytes()) {
+                        let method = name.rsplit('.').next().unwrap_or(name);
+                        if matches!(method.to_ascii_lowercase().as_str(), "execute" | "query") {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            ancestor = current.parent();
+        }
+
+        false
+    }
+
+    fn is_dynamic_sql_value(node: Node, code: &str) -> bool {
+        let text = node.utf8_text(code.as_bytes()).unwrap_or("").trim();
+
+        if text.is_empty() {
+            return false;
+        }
+
+        !matches!(
+            node.kind(),
+            "string" | "integer" | "float" | "true" | "false" | "none"
+        )
     }
 
     fn is_sql_literal(text: &str) -> bool {

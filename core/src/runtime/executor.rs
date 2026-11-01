@@ -76,11 +76,57 @@ impl RuntimeExecutor {
                         "query construction with user-controlled input",
                     ));
                 }
+
+                for line in PythonParser::find_user_controlled_file_open_lines(&content) {
+                    findings.push(Self::build_finding(
+                        "PY-PATH-001",
+                        "User-controlled file path reaches open()",
+                        "High",
+                        &file_path,
+                        line,
+                        "open() receives a path derived from an untrusted request source",
+                    ));
+                }
+
+                for line in PythonParser::find_calls(&content, "pickle.loads") {
+                    findings.push(Self::build_finding(
+                        "PY-DESER-001",
+                        "Unsafe Deserialization detected",
+                        "High",
+                        &file_path,
+                        line,
+                        "pickle.loads(...)",
+                    ));
+                }
+
+                for line in PythonParser::find_calls(&content, "yaml.load") {
+                    findings.push(Self::build_finding(
+                        "PY-YAML-001",
+                        "Unsafe YAML deserialization detected",
+                        "High",
+                        &file_path,
+                        line,
+                        "yaml.load(...)",
+                    ));
+                }
+
+                for line in PythonParser::find_calls(&content, "subprocess.call") {
+                    let source_line = content.lines().nth(line.saturating_sub(1)).unwrap_or("");
+
+                    if source_line.contains("shell=True") {
+                        findings.push(Self::build_finding(
+                            "PY-CMD-002",
+                            "Shell command execution with shell=True",
+                            "Critical",
+                            &file_path,
+                            line,
+                            "subprocess.call(..., shell=True)",
+                        ));
+                    }
+                }
             }
 
-            if let Some(line) = Self::find_line(&content, "password =")
-                .or_else(|| Self::find_line(&content, "api_key ="))
-            {
+            if let Some(line) = Self::find_hardcoded_secret_line(&content) {
                 findings.push(Self::build_finding(
                     "PY-SECRET-001",
                     "Possible hardcoded secret detected",
@@ -114,11 +160,7 @@ impl RuntimeExecutor {
         }
     }
 
-    fn attach_security_paths(file: &str, content: &str, findings: &mut [Finding]) {
-        if findings.is_empty() {
-            return;
-        }
-
+    fn attach_security_paths(file: &str, content: &str, findings: &mut Vec<Finding>) {
         let graph = SecurityGraphBuilder::from_python(content, file);
 
         let sources: Vec<String> = graph
@@ -175,6 +217,28 @@ impl RuntimeExecutor {
                 }
             }
         }
+    }
+
+    fn find_hardcoded_secret_line(content: &str) -> Option<usize> {
+        for (index, line) in content.lines().enumerate() {
+            let lower = line.to_ascii_lowercase();
+
+            if !lower.contains("password") && !lower.contains("api_key") {
+                continue;
+            }
+
+            let Some(eq) = line.find('=') else {
+                continue;
+            };
+
+            let rhs = line[eq + 1..].trim();
+
+            if rhs.starts_with('"') || rhs.starts_with('\'') {
+                return Some(index + 1);
+            }
+        }
+
+        None
     }
 
     fn find_line(content: &str, needle: &str) -> Option<usize> {
