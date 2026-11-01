@@ -1,0 +1,18 @@
+[
+  { "code": "eval(user_input)", "vulnerable": true },
+  { "code": "os.system(request.GET[\"cmd\"])", "vulnerable": true },
+  { "code": "password = \"admin123\"", "vulnerable": true },
+  { "code": "cursor.execute(\"SELECT * FROM users WHERE id=\" + user_id)", "vulnerable": true },
+  { "code": "pickle.loads(user_data)", "vulnerable": true },
+  { "code": "subprocess.call(user_cmd, shell=True)", "vulnerable": true },
+  { "code": "open(request.args[\"file\"]).read()", "vulnerable": true },
+  { "code": "yaml.load(data)", "vulnerable": true },
+  { "code": "print(\"hello world\")", "vulnerable": false },
+  { "code": "x = 1 + 2", "vulnerable": false },
+  { "code": "cursor.execute(\"SELECT * FROM users WHERE id=?\", (user_id,))", "vulnerable": false },
+  { "code": "subprocess.call([\"ls\", \"-la\"])", "vulnerable": false },
+  { "code": "password = os.environ[\"DB_PASSWORD\"]", "vulnerable": false },
+  { "code": "yaml.safe_load(data)", "vulnerable": false },
+  { "code": "hashlib.sha256(password.encode()).hexdigest()", "vulnerable": false },
+  { "code": "open(os.path.basename(filename)).read()", "vulnerable": false }
+]
